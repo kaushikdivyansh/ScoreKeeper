@@ -8,12 +8,11 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var players: [Player] = [
-        Player(name: "Alice", score: 0),
-        Player(name: "Bob", score: 0),
-        Player(name: "Charlie", score: 0),
-        Player(name: "Dave", score: 0)
-    ]
+    @State private var scoreboard = Scoreboard()
+    @State private var startingPoints = 0
+    private var isGameInSetupMode: Bool {
+        scoreboard.state == .setup
+    }
     
     var body: some View {
         VStack(alignment: .leading) {
@@ -22,30 +21,70 @@ struct ContentView: View {
                 .bold()
                 .padding(.bottom)
             
+            SettingsView(doesHighestScoreWin: $scoreboard.doesHighestScoreWin, startingPoints: $startingPoints)
+                .disabled(!isGameInSetupMode)
+            
             Grid {
                 GridRow {
                     Text("Name")
                         .gridColumnAlignment(.leading)
                     Text("Score")
+                        .opacity(isGameInSetupMode ? 0 : 1)
                 }
                 .font(.headline)
                 
-                ForEach($players) { $player in
+                ForEach($scoreboard.players) { $player in
                     GridRow {
-                        TextField("Name", text: $player.name)
+                        HStack {
+                            if scoreboard.winners.contains(player) {
+                                Image(systemName: "crown.fill")
+                                    .foregroundStyle(.yellow)
+                            }
+                            TextField("Name", text: $player.name)
+                                .disabled(!isGameInSetupMode)
+                        }
                         Text("\(player.score)")
+                            .opacity(isGameInSetupMode ? 0 : 1)
                         Stepper("\(player.score)", value: $player.score)
                             .labelsHidden()
+                            .opacity(isGameInSetupMode ? 0 : 1)
                     }
                 }
             }
             .padding(.vertical)
             
             Button("Add Player", systemImage: "plus") {
-                players.append(Player(name: "", score: 0))
+                scoreboard.players.append(Player(name: "", score: 0))
             }
+            .opacity(isGameInSetupMode ? 1 : 0)
             
             Spacer()
+            
+            HStack {
+                Spacer()
+                
+                switch scoreboard.state {
+                case .setup:
+                    Button("Start Game", systemImage: "play.fill") {
+                        scoreboard.state = .playing
+                        scoreboard.resetScores(to: startingPoints)
+                    }
+                case .playing:
+                    Button("End Game", systemImage: "stop.fill") {
+                        scoreboard.state = .gameOver
+                    }
+                case .gameOver:
+                    Button("Reset Game", systemImage: "arrow.counterclockwise") {
+                        scoreboard.state = .setup
+                    }
+                }
+                
+                Spacer()
+            }
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .controlSize(.large)
+            .tint(.blue)
         }
         .padding()
     }
